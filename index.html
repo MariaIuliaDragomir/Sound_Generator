@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Generator</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-screen pb-24">
+
+  <header class="max-w-6xl mx-auto px-5 pt-10 pb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl panel flex items-center justify-center">
+        <span id="header-rec" class="rec-dot"></span>
+      </div>
+      <div>
+        <h1 class="font-display text-2xl sm:text-3xl font-bold tracking-tight"><span class="text-[var(--green)]">Sound Generator</span></h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-5 flex flex-col gap-6">
+
+    <section class="panel p-5 sm:p-6">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-2">
+        <h2 class="font-display font-bold text-lg">Master Panel</h2>
+        <div class="flex flex-wrap gap-2">
+          <button id="random-open" class="btn-ghost px-3 py-1.5 rounded-lg text-xs">Sunet Aleatoriu</button>
+          <button id="synth-open" class="btn-ghost px-3 py-1.5 rounded-lg text-xs">Mini Sintetizator</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <div class="flex justify-between items-baseline mb-1.5">
+              <label class="text-sm text-[var(--text-dim)]">Durata sunet scurt</label>
+              <span id="val-duration" class="font-mono text-sm text-[var(--green)]">1.0s</span>
+            </div>
+            <input id="duration" type="range" min="0.1" max="5" step="0.1" value="1.0">
+          </div>
+          <div>
+            <div class="flex justify-between items-baseline mb-1.5">
+              <label class="text-sm text-[var(--text-dim)]">Volum global</label>
+              <span id="val-volume" class="font-mono text-sm text-[var(--green)]">70%</span>
+            </div>
+            <input id="volume" type="range" min="0" max="100" step="1" value="70">
+          </div>
+          <div>
+            <div class="flex justify-between items-baseline mb-1.5">
+              <label class="text-sm text-[var(--text-dim)]">Pitch (tonalitate)</label>
+              <span id="val-pitch" class="font-mono text-sm text-[var(--amber)]">0 st</span>
+            </div>
+            <input id="pitch" class="amber-slider" type="range" min="-12" max="12" step="1" value="0">
+          </div>
+          <div>
+            <div class="flex justify-between items-baseline mb-1.5">
+              <label class="text-sm text-[var(--text-dim)]">Reverb (spatialitate)</label>
+              <span id="val-reverb" class="font-mono text-sm text-[var(--cyan)]">20%</span>
+            </div>
+            <input id="reverb" class="cyan-slider" type="range" min="0" max="100" step="1" value="20">
+          </div>
+        </div>
+
+        <div class="scope-screen p-2 h-40 sm:h-full min-h-[10rem] relative">
+          <canvas id="visualizer" class="w-full h-full"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel p-5 sm:p-6">
+      <h2 class="font-display font-bold text-lg mb-5">Pad-uri Audio</h2>
+      <div id="pads-grid" class="flex flex-col"></div>
+    </section>
+
+    <section class="panel p-5 sm:p-6">
+      <h2 class="font-display font-bold text-lg mb-5">Mixer</h2>
+      <div id="mixer-channels" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
+      <div class="flex flex-wrap gap-3 mt-6">
+        <button id="mix-start" class="btn-primary px-5 py-2.5 rounded-lg text-sm">Porneste Mixul</button>
+        <button id="stop-all" class="btn-danger px-5 py-2.5 rounded-lg text-sm">Opreste Tot</button>
+
+        <button id="rec-mixer" class="btn-ghost btn-rec px-5 py-2.5 rounded-lg text-sm">Descarca Mix</button>
+      </div>
+    </section>
+
+    <section class="panel p-5 sm:p-6">
+      <h2 class="font-display font-bold text-lg mb-5">Sequencer Ritmic</h2>
+
+      <div class="flex flex-wrap items-center gap-5 mb-5">
+        <button id="seq-play" class="btn-primary px-5 py-2.5 rounded-lg text-sm">
+          <span id="seq-play-label">Play</span>
+        </button>
+        <div class="flex items-center gap-3 min-w-[220px] flex-1">
+          <label class="text-sm text-[var(--text-dim)] whitespace-nowrap">BPM</label>
+          <input id="bpm" type="range" min="60" max="220" step="1" value="120" class="flex-1">
+          <span id="val-bpm" class="font-mono text-sm text-[var(--green)] w-12 text-right">120</span>
+        </div>
+        <button id="rec-pads" class="btn-ghost btn-rec px-5 py-2.5 rounded-lg text-sm">Descarca Secventa / Sintetizator</button>
+      </div>
+
+      <div id="seq-grid" class="overflow-x-auto pb-2"></div>
+
+      <div class="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-[var(--border)]">
+        <select id="seq-add-select" class="rounded-lg px-3 py-2 text-sm"></select>
+        <button id="seq-add-row" class="btn-ghost px-4 py-2 rounded-lg text-sm">+ Adauga rand</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============== MODAL "SUNET ALEATORIU" ============== -->
+  <div id="random-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-md p-6 relative">
+      <button id="random-close" class="absolute top-4 right-4 text-[var(--text-dim)] hover:text-[var(--text)] text-lg leading-none">✕</button>
+      <h3 class="font-display font-bold text-lg mb-1">Sunet Aleatoriu</h3>
+      <p class="text-xs text-[var(--text-dim)] mb-4">Asculta previzualizarea. Pastreaza-l ca pad nou sau incearca altul.</p>
+
+      <p id="random-name" class="font-display font-bold text-2xl mb-5 text-center">Sunet Aleatoriu #1</p>
+
+      <div class="flex gap-3">
+        <button id="random-retry" class="btn-ghost flex-1 py-2.5 rounded-lg text-sm">Incearca altul</button>
+        <button id="random-keep" class="btn-primary flex-1 py-2.5 rounded-lg text-sm">Pastreaza</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== MODAL "MINI SINTETIZATOR" ============== -->
+  <div id="synth-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-lg p-6 relative max-h-[92vh] overflow-y-auto">
+      <button id="synth-close" class="absolute top-4 right-4 text-[var(--text-dim)] hover:text-[var(--text)] text-lg leading-none">✕</button>
+      <h3 class="font-display font-bold text-lg mb-1">Mini Sintetizator</h3>
+      <p class="text-xs text-[var(--text-dim)] mb-4">Construieste-ti propriul sunet, parametru cu parametru.</p>
+
+      <label class="text-xs text-[var(--text-dim)] block mb-1">Nume sunet</label>
+      <input id="synth-name" type="text" placeholder="Sunetul meu" class="w-full rounded-lg px-3 py-2 text-sm mb-4">
+
+      <label class="text-xs text-[var(--text-dim)] block mb-1">Tip oscilator</label>
+      <select id="synth-osc" class="w-full rounded-lg px-3 py-2 text-sm mb-4">
+        <option value="sine">Sinus (neted)</option>
+        <option value="triangle">Triunghi</option>
+        <option value="square">Patrat</option>
+        <option value="sawtooth">Fierastrau (aspru)</option>
+      </select>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Frecventa de baza</label><span id="synth-freq-val" class="font-mono text-xs text-[var(--green)]">440 Hz</span></div>
+          <input id="synth-freq" type="range" min="40" max="3000" step="1" value="440">
+        </div>
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Durata</label><span id="synth-dur-val" class="font-mono text-xs text-[var(--green)]">0.8s</span></div>
+          <input id="synth-dur" type="range" min="0.1" max="3" step="0.05" value="0.8">
+        </div>
+      </div>
+
+      <label class="flex items-center gap-2 mb-3 text-xs text-[var(--text-dim)]">
+        <input id="synth-slide-enabled" type="checkbox">
+        Alunecare de pitch
+      </label>
+      <div id="synth-slide-row" class="hidden mb-4">
+        <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Frecventa tinta</label><span id="synth-slide-val" class="font-mono text-xs text-[var(--green)]">150 Hz</span></div>
+        <input id="synth-slide" type="range" min="20" max="3000" step="1" value="150">
+      </div>
+
+      <p class="text-xs text-[var(--text-dim)] font-mono uppercase tracking-wider mb-2 mt-5">Plic (ADSR)</p>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Attack</label><span id="synth-attack-val" class="font-mono text-xs text-[var(--amber)]">0.01s</span></div>
+          <input id="synth-attack" class="amber-slider" type="range" min="0.001" max="1" step="0.001" value="0.01">
+        </div>
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Decay</label><span id="synth-decay-val" class="font-mono text-xs text-[var(--amber)]">0.3s</span></div>
+          <input id="synth-decay" class="amber-slider" type="range" min="0.01" max="2" step="0.01" value="0.3">
+        </div>
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Sustain</label><span id="synth-sustain-val" class="font-mono text-xs text-[var(--amber)]">0.2</span></div>
+          <input id="synth-sustain" class="amber-slider" type="range" min="0" max="1" step="0.01" value="0.2">
+        </div>
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Release</label><span id="synth-release-val" class="font-mono text-xs text-[var(--amber)]">0.3s</span></div>
+          <input id="synth-release" class="amber-slider" type="range" min="0.01" max="2" step="0.01" value="0.3">
+        </div>
+      </div>
+
+      <p class="text-xs text-[var(--text-dim)] font-mono uppercase tracking-wider mb-2 mt-5">Filtru si zgomot</p>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-xs text-[var(--text-dim)] block mb-1.5">Tip filtru</label>
+          <select id="synth-filter-type" class="w-full rounded-lg px-3 py-2 text-sm">
+            <option value="none">Fara filtru</option>
+            <option value="lowpass" selected>Trece-jos</option>
+            <option value="highpass">Trece-sus</option>
+            <option value="bandpass">Trece-banda</option>
+          </select>
+        </div>
+        <div>
+          <div class="flex justify-between mb-1.5"><label class="text-xs text-[var(--text-dim)]">Frecventa filtru</label><span id="synth-filter-freq-val" class="font-mono text-xs text-[var(--cyan)]">2000 Hz</span></div>
+          <input id="synth-filter-freq" class="cyan-slider" type="range" min="100" max="8000" step="10" value="2000">
+        </div>
+      </div>
+
+      <label class="text-xs text-[var(--text-dim)] block mb-1">Strat de zgomot</label>
+      <select id="synth-noise-type" class="w-full rounded-lg px-3 py-2 text-sm mb-5">
+        <option value="none" selected>Fara</option>
+        <option value="white">Alb</option>
+        <option value="pink">Roz</option>
+        <option value="brown">Maro</option>
+      </select>
+
+      <div class="flex gap-3">
+        <button id="synth-test" class="btn-ghost flex-1 py-2.5 rounded-lg text-sm">Testeaza</button>
+        <button id="synth-save" class="btn-primary flex-1 py-2.5 rounded-lg text-sm">Salveaza ca Pad</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
